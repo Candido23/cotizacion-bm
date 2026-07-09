@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cotización Oficial - BM Security</title>
+    <!-- Librería externa para exportar a PDF de forma limpia -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         *, *::before, *::after {
             box-sizing: border-box;
@@ -11,7 +13,7 @@
         body {
             font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
             margin: 0;
-            padding: 30px 20px;
+            padding: 30px 10px;
             background-color: #f1f5f9;
             color: #334155;
         }
@@ -25,18 +27,38 @@
             position: relative;
             border-top: 20px solid #d4af37;
         }
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+        
+        /* HEADER - Estilo Tabla para máxima compatibilidad con PDF */
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
             margin-bottom: 35px;
-            padding-bottom: 25px;
             border-bottom: 2px solid #e2e8f0;
         }
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 20px;
+        .header-table td {
+            border: none;
+            padding: 0 0 25px 0;
+            vertical-align: middle;
+        }
+        .header-left-box {
+            display: block;
+        }
+        .logo-container {
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 20px;
+        }
+        .logo-container img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 3px solid #d4af37;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+        }
+        .header-title {
+            display: inline-block;
+            vertical-align: middle;
         }
         .header-title h1 {
             margin: 0;
@@ -53,24 +75,13 @@
             text-transform: uppercase;
             letter-spacing: 2px;
         }
-        .logo-container img {
-            width: 100px;
-            height: 100px;
-            object-fit: cover;
-            border-radius: 50%;
-            border: 3px solid #d4af37;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
-        }
-        
         .header-meta {
             text-align: right;
             min-width: 180px;
         }
         .meta-block {
             margin-bottom: 8px;
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
+            text-align: right;
             font-size: 14px;
         }
         .meta-block label {
@@ -80,9 +91,10 @@
             text-transform: uppercase;
             font-size: 12px;
             letter-spacing: 0.5px;
+            display: inline-block;
         }
         .meta-block input {
-            width: 100px;
+            width: 110px;
             border: none;
             border-bottom: 1px solid #cbd5e1;
             padding: 2px 4px;
@@ -97,16 +109,30 @@
             border-bottom: 2px solid #0f172a;
         }
         
-        .info-sections {
-            display: flex;
-            justify-content: space-between;
-            gap: 20px;
+        /* SECCIONES DE INFORMACIÓN */
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
             margin-bottom: 30px;
         }
+        .info-table td {
+            width: 50%;
+            border: none;
+            padding: 0;
+            vertical-align: top;
+        }
+        .info-table td:first-child {
+            padding-right: 15px;
+        }
+        .info-table td:last-child {
+            padding-left: 15px;
+        }
+        
         .client-section, .company-section {
-            flex: 1;
             padding: 20px;
             border-radius: 8px;
+            height: 100%;
+            display: block;
         }
         .client-section {
             background: #f8fafc;
@@ -123,33 +149,30 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        .client-section h3 {
-            color: #0f172a;
-        }
-        .company-section h3 {
-            color: #856404;
-        }
+        .client-section h3 { color: #0f172a; }
+        .company-section h3 { color: #856404; }
+        
         .info-block {
             margin-bottom: 12px;
-            display: flex;
-            align-items: center;
             font-size: 14px;
+            display: block;
+            width: 100%;
         }
         .info-block label {
             font-weight: bold;
             color: #475569;
             margin-right: 8px;
-            white-space: nowrap;
+            display: inline-block;
+            min-width: 80px;
         }
         .info-block input {
-            flex: 1;
+            width: calc(100% - 95px);
             border: none;
             border-bottom: 1px solid #cbd5e1;
             padding: 4px 6px;
             font-size: 14px;
             background: transparent;
             color: #0f172a;
-            min-width: 0;
         }
         .info-block input:focus {
             outline: none;
@@ -158,19 +181,14 @@
         .company-section .info-block input:focus {
             border-bottom: 2px solid #d4af37;
         }
-        .info-block .icon {
-            margin-right: 8px;
-            font-size: 15px;
-            width: 20px;
-            text-align: center;
-        }
 
-        table {
+        /* TABLA DE PRODUCTOS / SERVICIOS */
+        .items-table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 25px;
         }
-        th {
+        .items-table th {
             background-color: #0f172a;
             color: #ffffff;
             padding: 14px;
@@ -179,28 +197,27 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        th:first-child { border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
-        th:last-child { border-top-right-radius: 6px; border-bottom-right-radius: 6px; }
+        .items-table th:first-child { border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
+        .items-table th:last-child { border-top-right-radius: 6px; border-bottom-right-radius: 6px; }
         
-        th:nth-child(1) { width: 12%; text-align: center; }
-        th:nth-child(2) { width: 48%; text-align: left; }
-        th:nth-child(3) { width: 20%; text-align: right; }
-        th:nth-child(4) { width: 20%; text-align: right; }
+        .items-table th:nth-child(1) { width: 12%; text-align: center; }
+        .items-table th:nth-child(2) { width: 48%; text-align: left; }
+        .items-table th:nth-child(3) { width: 20%; text-align: right; }
+        .items-table th:nth-child(4) { width: 20%; text-align: right; }
         
-        td {
+        .items-table td {
             padding: 12px 14px;
             border-bottom: 1px solid #e2e8f0;
         }
-        td input {
+        .items-table td input {
             width: 100%;
             padding: 8px 10px;
             border: 1px solid #cbd5e1;
             border-radius: 6px;
             font-size: 13.5px;
             color: #0f172a;
-            transition: all 0.2s;
         }
-        td input:focus {
+        .items-table td input:focus {
             outline: none;
             border-color: #d4af37;
             box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
@@ -208,14 +225,16 @@
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         
+        /* TOTALES */
         .totals-container {
-            display: flex;
-            justify-content: flex-end;
+            width: 100%;
+            text-align: right;
             margin-bottom: 25px;
         }
         .totals-table {
             width: 320px;
-            margin: 0;
+            display: inline-table;
+            border-collapse: collapse;
         }
         .totals-table td {
             padding: 8px 10px;
@@ -228,9 +247,9 @@
             font-size: 16px;
             background-color: #fef9c3;
             font-weight: bold;
-            border-radius: 4px;
         }
         
+        /* TERMINOS */
         .terms {
             margin-top: 30px;
             font-size: 13px;
@@ -240,6 +259,7 @@
             padding: 15px 20px;
             border-radius: 8px;
             border: 1px solid #e2e8f0;
+            text-align: left;
         }
         .terms h4 {
             color: #0f172a;
@@ -255,30 +275,30 @@
             margin: 0;
             padding-left: 20px;
         }
-        .terms li {
-            margin-bottom: 6px;
-        }
+        .terms li { margin-bottom: 6px; }
         
-        .footer-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-top: 120px;
-            padding-top: 10px;
-        }
-        .signature-container {
-            display: flex;
-            justify-content: space-between;
+        /* FIRMAS */
+        .footer-table {
             width: 100%;
+            border-collapse: collapse;
+            margin-top: 100px;
         }
+        .footer-table td {
+            width: 50%;
+            border: none;
+            text-align: center;
+            vertical-align: bottom;
+        }
+        .footer-table td:first-child { padding-right: 30px; }
+        .footer-table td:last-child { padding-left: 30px; }
+        
         .signature {
             border-top: 2px solid #94a3b8;
-            width: 240px;
-            text-align: center;
             padding-top: 10px;
             font-weight: bold;
             font-size: 13px;
             color: #0f172a;
+            text-align: center;
         }
         .signature .subtitle {
             font-size: 11px;
@@ -289,6 +309,7 @@
             letter-spacing: 0.5px;
         }
 
+        /* BOTONES SUPERIORES */
         .no-print {
             text-align: center;
             margin-bottom: 30px;
@@ -296,199 +317,287 @@
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
         }
         .btn-print {
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             color: #ffffff;
             border: none;
-            padding: 14px 40px;
-            font-size: 16px;
+            padding: 12px 28px;
+            font-size: 14px;
             font-weight: bold;
             border-radius: 8px;
             cursor: pointer;
-            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.3);
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2);
             transition: all 0.2s ease;
+            flex: 1;
+            min-width: 140px;
+            max-width: 200px;
         }
         .btn-print:hover {
             transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(15, 23, 42, 0.4);
-            background: linear-gradient(135deg, #d4af37 0%, #b89324 100%);
+            box-shadow: 0 6px 20px rgba(15, 23, 42, 0.3);
+        }
+        .btn-pdf { background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%) !important; }
+        .btn-share { background: linear-gradient(135deg, #0369a1 0%, #075985 100%) !important; }
+        
+        /* 📱 RESPONSIVE - DISEÑO PARA PANTALLAS MÓVILES */
+        @media screen and (max-width: 600px) {
+            body {
+                padding: 10px 5px;
+                background-color: #f8fafc;
+            }
+            .container {
+                padding: 15px 12px;
+                border-radius: 8px;
+                border-top: 10px solid #d4af37;
+            }
+            
+            /* Convertir tablas de estructura en bloques apilados */
+            .header-table, .header-table tbody, .header-table tr, .header-table td {
+                display: block;
+                width: 100% !important;
+                text-align: center !important;
+            }
+            .header-table td {
+                padding-bottom: 15px;
+            }
+            .logo-container {
+                margin-right: 0;
+                margin-bottom: 10px;
+                display: block;
+            }
+            .header-meta {
+                text-align: center !important;
+            }
+            .meta-block {
+                text-align: center !important;
+                margin-bottom: 12px;
+            }
+            .meta-block label {
+                min-width: 90px;
+                text-align: right;
+            }
+            .meta-block input {
+                text-align: left;
+                width: 140px;
+                border-bottom: 1px solid #cbd5e1;
+            }
+            
+            /* Secciones de información una debajo de la otra */
+            .info-table, .info-table tbody, .info-table tr, .info-table td {
+                display: block;
+                width: 100% !important;
+            }
+            .info-table td {
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                margin-bottom: 15px;
+            }
+            .info-block input {
+                width: calc(100% - 90px);
+            }
+            
+            /* Hacer que la tabla de productos permita scroll horizontal si es necesario */
+            .items-table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            .items-table th, .items-table td {
+                padding: 8px 6px !important;
+                font-size: 12px;
+            }
+            .items-table td input {
+                padding: 6px 6px;
+                font-size: 12px;
+            }
+            
+            /* Totales centrados o al ancho completo */
+            .totals-container {
+                text-align: center;
+            }
+            .totals-table {
+                width: 100%;
+            }
+            
+            /* Firmas una debajo de la otra */
+            .footer-table, .footer-table tbody, .footer-table tr, .footer-table td {
+                display: block;
+                width: 100% !important;
+            }
+            .footer-table td {
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                margin-bottom: 50px;
+            }
+            .footer-table {
+                margin-top: 50px;
+            }
         }
         
-        .btn-pdf {
-                 background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%) !important; /* Rojo para PDF */
-        }
-        .btn-share {
-                 background: linear-gradient(135deg, #0369a1 0%, #075985 100%) !important; /* Azul para Compartir */
-        }
-        /* AJUSTES CRÍTICOS PARA FORZAR UNA SOLA PÁGINA */
-        @media print {
+        /* 🖨️ CONFIGURACIÓN CRÍTICA PARA IMPRESIÓN Y DESCARGA DE PDF (Forzar Estructura Original) */
+        @media print, .fijar-pagina-pdf {
             html, body {
                 height: auto;
-                background-color: #ffffff;
-                font-size: 11px;
+                background-color: #ffffff !important;
+                font-size: 11px !important;
                 margin: 0 !important;
                 padding: 0 !important;
             }
-            .no-print { 
-                display: none !important; 
-            }
+            .no-print { display: none !important; }
+            
             .container { 
                 box-shadow: none !important; 
-                padding: 5mm 10mm !important;
+                padding: 4mm 8mm !important;
                 max-width: 100% !important;
                 width: 100% !important;
                 border-top: none !important;
-                page-break-inside: avoid !important;
+                background: #ffffff !important;
             }
-            @page {
-                size: letter;
-                margin: 8mm 5mm;
-            }
-            .header {
-                margin-bottom: 15px !important;
-                padding-bottom: 15px !important;
-            }
-            .logo-container img {
-                width: 80px !important;
-                height: 80px !important;
-                border: 2px solid #d4af37 !important;
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-            }
-            .header-title h1 {
-                font-size: 26px !important;
-            }
-            .info-sections {
-                margin-bottom: 15px !important;
-                gap: 15px !important;
-            }
-            .client-section, .company-section {
-                padding: 12px 15px !important;
-            }
-            .info-block {
-                margin-bottom: 6px !important;
-            }
-            table {
-                margin-bottom: 15px !important;
-            }
-            th {
-                padding: 8px 10px !important;
-                background-color: #0f172a !important;
-                color: #ffffff !important;
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-            }
-            td {
-                padding: 6px 10px !important;
-            }
+            
+            /* Forzar que vuelvan a ser tablas en el PDF */
+            .header-table { display: table !important; width: 100% !important; margin-bottom: 15px !important; }
+            .header-table tr { display: table-row !important; }
+            .header-table td { display: table-cell !important; padding-bottom: 10px !important; text-align: left !important; }
+            .header-meta { text-align: right !important; display: table-cell !important; }
+            .meta-block { text-align: right !important; }
+            .logo-container { display: inline-block !important; margin-right: 15px !important; }
+            .logo-container img { width: 75px !important; height: 75px !important; }
+            .header-title h1 { font-size: 26px !important; }
+            
+            .info-table { display: table !important; width: 100% !important; margin-bottom: 15px !important; }
+            .info-table tr { display: table-row !important; }
+            .info-table td { display: table-cell !important; width: 50% !important; }
+            .info-table td:first-child { padding-right: 10px !important; }
+            .info-table td:last-child { padding-left: 10px !important; }
+            .client-section, .company-section { padding: 12px 15px !important; }
+            .info-block { margin-bottom: 6px !important; }
+            
+            .items-table { display: table !important; width: 100% !important; margin-bottom: 15px !important; }
+            .items-table tr { display: table-row !important; }
+            .items-table th, .items-table td { display: table-cell !important; padding: 6px 10px !important; }
+            
+            .totals-container { text-align: right !important; margin-bottom: 15px !important; }
+            .totals-table { display: inline-table !important; width: 280px !important; }
+            .totals-table td { padding: 4px 6px !important; }
+            
+            .footer-table { display: table !important; width: 100% !important; margin-top: 45px !important; }
+            .footer-table tr { display: table-row !important; }
+            .footer-table td { display: table-cell !important; width: 50% !important; }
+            
             td input, .info-block input, .meta-block input {
                 border: none !important;
                 background: transparent !important;
                 padding: 0 !important;
             }
-            .totals-container {
-                margin-bottom: 15px !important;
-            }
-            .totals-table td {
-                padding: 4px 6px !important;
-            }
-            .totals-table tr.grand-total td {
-                background-color: #fef9c3 !important;
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-            }
-            .terms {
-                margin-top: 15px !important;
-                padding: 10px 15px !important;
-                background-color: #f8fafc !important;
-                border: 1px solid #e2e8f0 !important;
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-            }
-            .footer-section {
-                margin-top: 80px !important;
-                page-break-inside: avoid !important;
-            }
+            .terms { margin-top: 15px !important; padding: 10px 15px !important; }
+            
+            /* Forzar colores de fondos en PDF de navegadores */
+            th { background-color: #0f172a !important; color: #ffffff !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .client-section { background-color: #f8fafc !important; border-left: 4px solid #0f172a !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .company-section { background-color: #fdf9ed !important; border-left: 4px solid #d4af37 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .totals-table tr.grand-total td { background-color: #fef9c3 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+        }
+        
+        @page {
+            size: letter;
+            margin: 8mm 6mm;
         }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
     <div class="no-print">
-        <button class="btn-print" onclick="window.print()">📥 IMPRIMIR </button>
-        <button class="btn-print btn-pdf" onclick="descargarPDF()">📄 DESCARGAR PDF</button>
-        <button class="btn-print btn-share" onclick="compartirCotizacion()">🔗 COMPARTIR</button>
+        <div class="btn-group">
+            <button class="btn-print" onclick="window.print()">📥 IMPRIMIR</button>
+            <button class="btn-print btn-pdf" onclick="descargarPDF()">📄 PDF</button>
+            <button class="btn-print btn-share" onclick="compartirCotizacion()">🔗 COMPARTIR</button>
+        </div>
     </div>
 
     <div class="container">
-        <div class="header">
-            <div class="header-left">
-                <div class="logo-container">
-                    <img src="imagen/Logo.jpeg" alt="Logo BM Security">
-                </div>
-                <div class="header-title">
-                    <h1>BM SECURITY</h1>
-                    <p>Seguridad Profesional</p>
-                </div>
-            </div>
-            
-            <div class="header-meta">
-                <div class="meta-block">
-                    <label>Fecha:</label>
-                    <input type="text" id="fecha" readonly>
-                </div>
-                <div class="meta-block">
-                    <label>N° Pro-forma:</label>
-                    <input type="text" id="proforma">
-                </div>
-            </div>
-        </div>
+        <!-- HEADER EN ESTRUCTURA DE TABLA FLUIDA -->
+        <table class="header-table">
+            <tr>
+                <td>
+                    <div class="header-left-box">
+                        <div class="logo-container">
+                            <img src="imagen/Logo.jpeg" alt="Logo BM Security">
+                        </div>
+                        <div class="header-title">
+                            <h1>BM SECURITY</h1>
+                            <p>Seguridad Profesional</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="header-meta">
+                    <div class="meta-block">
+                        <label>Fecha:</label>
+                        <input type="text" id="fecha" readonly>
+                    </div>
+                    <div class="meta-block">
+                        <label>N° Pro-forma:</label>
+                        <input type="text" id="proforma">
+                    </div>
+                </td>
+            </tr>
+        </table>
 
-        <div class="info-sections">
-            <div class="client-section">
-                <h3>👤 Datos del Cliente</h3>
-                <div class="info-block">
-                    <label>Empresa:</label>
-                    <input type="text" placeholder="Nombre de la empresa...">
-                </div>
-                <div class="info-block">
-                    <label>Teléfono:</label>
-                    <input type="text" placeholder="Teléfono del cliente...">
-                </div>
-                <div class="info-block">
-                    <label>Ref. Evento:</label>
-                    <input type="text" placeholder="Referencia del evento...">
-                </div>
-            </div>
+        <!-- SECCIONES EN ESTRUCTURA DE TABLA FLUIDA -->
+        <table class="info-table">
+            <tr>
+                <td>
+                    <div class="client-section">
+                        <h3>👤 Datos del Cliente</h3>
+                        <div class="info-block">
+                            <label>Empresa:</label>
+                            <input type="text" placeholder="Nombre de la empresa...">
+                        </div>
+                        <div class="info-block">
+                            <label>Teléfono:</label>
+                            <input type="text" placeholder="Teléfono del cliente...">
+                        </div>
+                        <div class="info-block">
+                            <label>Ref. Evento:</label>
+                            <input type="text" placeholder="Referencia del evento...">
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="company-section">
+                        <h3>🏢 Datos de la Empresa</h3>
+                        <div class="info-block">
+                            <label>Nombre:</label>
+                            <input type="text" value="BM Security">
+                        </div>
+                        <div class="info-block">
+                            <label>📍 Ubicación:</label>
+                            <input type="text" placeholder="Dirección física...">
+                        </div>
+                        <div class="info-block">
+                            <label>📞 Teléfono:</label>
+                            <input type="text" placeholder="Teléfono de contacto...">
+                        </div>
+                        <div class="info-block">
+                            <label>✉️ Correo:</label>
+                            <input type="text" value="bmsecurityhn@gmail.com">
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
 
-            <div class="company-section">
-                <h3>🏢 Datos de la Empresa</h3>
-                <div class="info-block">
-                    <span class="icon">🏢</span>
-                    <label>Nombre:</label>
-                    <input type="text" value="BM Security">
-                </div>
-                <div class="info-block">
-                    <span class="icon">📍</span>
-                    <label>Ubicación:</label>
-                    <input type="text" placeholder="Dirección física oficial...">
-                </div>
-                <div class="info-block">
-                    <span class="icon">📞</span>
-                    <label>Teléfono:</label>
-                    <input type="text" placeholder="Teléfono corporativo...">
-                </div>
-                <div class="info-block">
-                    <span class="icon">✉️</span>
-                    <label>Correo:</label>
-                    <input type="text" value="bmsecurityhn@gmail.com">
-                </div>
-            </div>
-        </div>
-
-        <table id="invoice-table">
+        <!-- TABLA DE ARTÍCULOS -->
+        <table class="items-table">
             <thead>
                 <tr>
                     <th>Cant.</th>
@@ -500,7 +609,7 @@
             <tbody>
                 <tr class="item-row">
                     <td><input type="number" class="qty text-center" placeholder="0" oninput="calculateTotals()"></td>
-                    <td><input type="text" class="desc" placeholder="Ej. BM SECURITY...."></td>
+                    <td><input type="text" class="desc" placeholder="Ej. Bouncers de seguridad..."></td>
                     <td><input type="number" class="price text-right" placeholder="0.00" step="0.01" oninput="calculateTotals()"></td>
                     <td class="total text-right" style="font-weight: 600; color: #0f172a;">L. 0.00</td>
                 </tr>
@@ -525,6 +634,7 @@
             </tbody>
         </table>
 
+        <!-- CONTENEDOR DE TOTALES -->
         <div class="totals-container">
             <table class="totals-table">
                 <tr>
@@ -546,6 +656,7 @@
             </table>
         </div>
 
+        <!-- TÉRMINOS -->
         <div class="terms">
             <h4>Términos y Condiciones</h4>
             <ol>
@@ -555,21 +666,24 @@
             </ol>
         </div>
 
-        <div class="footer-section">
-            <div class="signature-container">
-                <div class="signature">
-                    GERENCIA GENERAL
-                    <div class="subtitle">BM Security</div>
-                </div>
-
-                <div class="signature">
-                    ACEPTADO POR EL CLIENTE
-                    <div class="subtitle">Firma y Sello Autorizado</div>
-                </div>
-            </div>
-        </div>
+        <!-- SECCIÓN DE FIRMAS EN ESTRUCTURA DE TABLA FLUIDA -->
+        <table class="footer-table">
+            <tr>
+                <td>
+                    <div class="signature">
+                        GERENCIA GENERAL
+                        <div class="subtitle">BM Security</div>
+                    </div>
+                </td>
+                <td>
+                    <div class="signature">
+                        ACEPTADO POR EL CLIENTE
+                        <div class="subtitle">Firma y Sello Autorizado</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
     </div>
-
 
     <script>
         function formatCurrency(value) {
@@ -604,66 +718,64 @@
             document.getElementById('total-general').textContent = formatCurrency(grandTotal);
         }
 
-        // Función para colocar la fecha actual de forma automática (DD/MM/AAAA)
         function establecerFechaAutomatica() {
             const hoy = new Date();
             const dia = String(hoy.getDate()).padStart(2, '0');
             const mes = String(hoy.getMonth() + 1).padStart(2, '0'); 
             const anio = hoy.getFullYear();
-            
             document.getElementById('fecha').value = `${dia}/${mes}/${anio}`;
         }
 
-        // Función para generar un número aleatorio de 6 dígitos para la pro-forma
         function generarNumeroProforma() {
             const numeroAleatorio = Math.floor(100000 + Math.random() * 900000);
             document.getElementById('proforma').value = numeroAleatorio;
         }
 
-        // Ejecutar los campos automáticos cuando la interfaz cargue por completo
+        // Función optimizada para descargar en una sola página sin romper estilos responsivos
+        function descargarPDF() {
+            const elemento = document.querySelector('.container');
+            
+            // Forzamos al elemento a comportarse en modo de impresión compacto estructurado
+            elemento.classList.add('fijar-pagina-pdf');
+
+            const opciones = {
+                margin:       [10, 8, 10, 8],
+                filename:     `Cotizacion_BM_Security_${document.getElementById('proforma').value || 'Nueva'}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' },
+                pagebreak:    { mode: 'avoid' }
+            };
+
+            html2pdf().set(opciones).from(elemento).save().then(() => {
+                // Restauramos la vista responsive normal de teléfono
+                elemento.classList.remove('fijar-pagina-pdf');
+            });
+        }
+
+        function compartirCotizacion() {
+            const numProforma = document.getElementById('proforma').value;
+            const fecha = document.getElementById('fecha').value;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: `Cotización BM Security N° ${numProforma}`,
+                    text: `Saludos, adjunto los detalles de la cotización pro-forma N° ${numProforma} emitida el ${fecha}.`,
+                    url: window.location.href
+                })
+                .then(() => console.log('Compartido con éxito'))
+                .catch((error) => console.log('Error al compartir', error));
+            } else {
+                const textoCopia = `BM Security - Cotización N° ${numProforma} (${fecha})`;
+                navigator.clipboard.writeText(textoCopia);
+                alert("¡Información copiada! Ya puedes pegarla en tus chats.");
+            }
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             establecerFechaAutomatica();
             generarNumeroProforma();
         });
-
-        // NUEVO: Función para generar y descargar el PDF con la estructura exacta
-function descargarPDF() {
-    const elemento = document.querySelector('.container'); // Selecciona la cotización
-    
-    // Configuración para que quepa perfectamente en una sola página fija
-    const opciones = {
-        margin:       [10, 10, 10, 10], // Márgenes físicos en milímetros
-        filename:     `Cotizacion_BM_Security_${document.getElementById('proforma').value || 'Nuev'}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true }, // Escala alta para nitidez de texto y logo
-        jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' }
-    };
-
-    // Ejecuta la conversión y descarga automáticamente
-    html2pdf().set(opciones).from(elemento).save();
-}
-
-// NUEVO: Función para compartir el enlace o los datos de la cotización
-function compartirCotizacion() {
-    const numProforma = document.getElementById('proforma').value;
-    const fecha = document.getElementById('fecha').value;
-    
-    // Validar si el navegador del usuario soporta compartir de forma nativa
-    if (navigator.share) {
-        navigator.share({
-            title: `Cotización Oficial BM Security N° ${numProforma}`,
-            text: `Hola, adjunto los detalles de la cotización pro-forma N° ${numProforma} emitida el ${fecha}.`,
-            url: window.location.href // Envía el link actual si está subido a una web
-        })
-        .then(() => console.log('Compartido con éxito'))
-        .catch((error) => console.log('Error al compartir', error));
-    } else {
-        // Alternativa si el navegador es antiguo o no lo soporta (ej. copiar al portapapeles)
-        const textoCopia = `BM Security - Cotización N° ${numProforma} (${fecha})`;
-        navigator.clipboard.writeText(textoCopia);
-        alert("Información básica de la cotización copiada al portapapeles.");
-    }
-}
     </script>
 </body>
 </html>
