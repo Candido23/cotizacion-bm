@@ -753,47 +753,36 @@
             });
         }
 
-      function compartirCotizacion() {
+     function compartirCotizacion() {
     const numProforma = document.getElementById('proforma').value;
     const fecha = document.getElementById('fecha').value;
+    const elemento = document.querySelector('.container');
     
-    // 1. Tomamos el contenedor original
-    const contenedorOriginal = document.querySelector('.container');
-    
-    // 2. Creamos una copia exacta en memoria para no alterar lo que ve el usuario en pantalla
-    const clon = contenedorOriginal.cloneNode(true);
-    
-    // 3. PASO CRÍTICO: Convertimos todos los inputs del clon en texto plano para el PDF
-    // Esto asegura que los datos escritos se queden impresos y ordenados
-    const inputsOriginales = contenedorOriginal.querySelectorAll('input, textarea');
-    const inputsClonados = clon.querySelectorAll('input, textarea');
-    
-    inputsOriginales.forEach((input, index) => {
-        const valor = input.value || '';
-        const elementoDestino = inputsClonados[index];
+    // 1. Guardamos todos los inputs reales y sus valores
+    const inputsOriginales = elemento.querySelectorAll('input');
+    const valoresGuardados = [];
+
+    // 2. Ocultamos las cajas de texto y ponemos texto limpio en su lugar
+    inputsOriginales.forEach((input) => {
+        valoresGuardados.push(input.value); // Guardamos qué decía
         
-        if (elementoDestino) {
-            // Creamos un elemento de texto limpio para reemplazar la caja de entrada
-            const textoLimpio = document.createElement('span');
-            textoLimpio.textContent = valor;
-            textoLimpio.style.display = 'inline-block';
-            textoLimpio.style.minHeight = '18px';
-            textoLimpio.style.color = '#0f172a';
-            textoLimpio.style.fontWeight = '600';
-            
-            // Reemplazamos el input cuadrado por el texto plano en el clon
-            elementoDestino.parentNode.replaceChild(textoLimpio, elementoDestino);
-        }
+        // Creamos un texto plano falso para engañar al PDF
+        const spanLimpio = document.createElement('span');
+        spanLimpio.textContent = input.value || ' ';
+        spanLimpio.className = 'texto-temporal-pdf'; // Le ponemos una clase para borrarlo después
+        spanLimpio.style.display = 'inline-block';
+        spanLimpio.style.fontWeight = '600';
+        spanLimpio.style.color = '#0f172a';
+        
+        // Ocultamos el input real y metemos el falso justo a la par
+        input.style.display = 'none';
+        input.parentNode.insertBefore(spanLimpio, input);
     });
 
-    // 4. Forzamos al clon a usar la estructura de tabla fija e impresión
-    clon.classList.add('fijar-pagina-pdf');
-    clon.style.width = '800px'; // Ancho fijo interno para evitar el desorden del celular
-    clon.style.position = 'absolute';
-    clon.style.left = '-9999px'; // Lo escondemos para que no se vea feo en pantalla
-    document.body.appendChild(clon);
+    // 3. Forzamos que se acomode como hoja tamaño carta
+    elemento.classList.add('fijar-pagina-pdf');
 
-    // 5. Configuración de la librería PDF apuntando al clon ordenado
+    // 4. Configuración del PDF
     const opciones = {
         margin:       [10, 8, 10, 8],
         filename:     `Cotizacion_BM_Security_${numProforma || 'Nueva'}.pdf`,
@@ -803,16 +792,27 @@
         pagebreak:    { mode: 'avoid' }
     };
 
-    // 6. Generamos el PDF desde nuestro clon perfecto
-    html2pdf().set(opciones).from(clon).outputPdf('blob').then((pdfBlob) => {
-        // Limpiamos la memoria borrando el clon oculto
-        document.body.removeChild(clon);
+    // 5. Generamos el archivo
+    html2pdf().set(opciones).from(elemento).outputPdf('blob').then((pdfBlob) => {
+        
+        // --- 6. RESTAURAMOS TODO A LA NORMALIDAD ---
+        elemento.classList.remove('fijar-pagina-pdf');
+        
+        // Borramos los textos falsos
+        const textosFalsos = elemento.querySelectorAll('.texto-temporal-pdf');
+        textosFalsos.forEach(span => span.remove());
+        
+        // Volvemos a mostrar los cuadros de texto con sus valores intactos
+        inputsOriginales.forEach((input, index) => {
+            input.style.display = ''; 
+            input.value = valoresGuardados[index]; 
+        });
+        // ---------------------------------------------
 
-        // 7. Creamos el archivo físico virtual
+        // 7. Creamos el archivo físico y lo compartimos
         const nombreArchivo = `Cotizacion_BM_${numProforma || 'Pendiente'}.pdf`;
         const archivoPDF = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
 
-        // 8. Enviamos el PDF con los datos congelados por el menú nativo del cel
         if (navigator.canShare && navigator.canShare({ files: [archivoPDF] })) {
             navigator.share({
                 title: `Cotización BM Security N° ${numProforma}`,
@@ -822,13 +822,8 @@
             .then(() => console.log('Compartido con éxito'))
             .catch((error) => console.log('Error al compartir', error));
         } else {
-            const textoCopia = `BM Security - Cotización N° ${numProforma} (${fecha})`;
-            navigator.clipboard.writeText(textoCopia);
-            alert("Tu navegador no soporta compartir archivos directamente. Se copió el texto. Usa el botón 'PDF' para descargarlo manualmente.");
+            alert("Tu navegador no soporta adjuntar archivos directos. Usa el botón PDF para descargarlo y enviarlo por WhatsApp.");
         }
-    }).catch((err) => {
-        console.error(err);
-        if (document.body.contains(clon)) document.body.removeChild(clon);
     });
 }
 
