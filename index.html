@@ -753,36 +753,14 @@
             });
         }
 
-     function compartirCotizacion() {
+   function compartirCotizacion() {
     const numProforma = document.getElementById('proforma').value;
     const fecha = document.getElementById('fecha').value;
     const elemento = document.querySelector('.container');
     
-    // 1. Guardamos todos los inputs reales y sus valores
-    const inputsOriginales = elemento.querySelectorAll('input');
-    const valoresGuardados = [];
-
-    // 2. Ocultamos las cajas de texto y ponemos texto limpio en su lugar
-    inputsOriginales.forEach((input) => {
-        valoresGuardados.push(input.value); // Guardamos qué decía
-        
-        // Creamos un texto plano falso para engañar al PDF
-        const spanLimpio = document.createElement('span');
-        spanLimpio.textContent = input.value || ' ';
-        spanLimpio.className = 'texto-temporal-pdf'; // Le ponemos una clase para borrarlo después
-        spanLimpio.style.display = 'inline-block';
-        spanLimpio.style.fontWeight = '600';
-        spanLimpio.style.color = '#0f172a';
-        
-        // Ocultamos el input real y metemos el falso justo a la par
-        input.style.display = 'none';
-        input.parentNode.insertBefore(spanLimpio, input);
-    });
-
-    // 3. Forzamos que se acomode como hoja tamaño carta
+    // 1. Forzamos la estructura compacta de impresión para el PDF
     elemento.classList.add('fijar-pagina-pdf');
 
-    // 4. Configuración del PDF
     const opciones = {
         margin:       [10, 8, 10, 8],
         filename:     `Cotizacion_BM_Security_${numProforma || 'Nueva'}.pdf`,
@@ -792,37 +770,29 @@
         pagebreak:    { mode: 'avoid' }
     };
 
-    // 5. Generamos el archivo
+    // 2. Generamos el PDF como un "Blob" (archivo binario en memoria) en lugar de descargarlo directamente
     html2pdf().set(opciones).from(elemento).outputPdf('blob').then((pdfBlob) => {
-        
-        // --- 6. RESTAURAMOS TODO A LA NORMALIDAD ---
+        // Restauramos de inmediato el diseño responsivo en la pantalla del celular
         elemento.classList.remove('fijar-pagina-pdf');
-        
-        // Borramos los textos falsos
-        const textosFalsos = elemento.querySelectorAll('.texto-temporal-pdf');
-        textosFalsos.forEach(span => span.remove());
-        
-        // Volvemos a mostrar los cuadros de texto con sus valores intactos
-        inputsOriginales.forEach((input, index) => {
-            input.style.display = ''; 
-            input.value = valoresGuardados[index]; 
-        });
-        // ---------------------------------------------
 
-        // 7. Creamos el archivo físico y lo compartimos
-        const nombreArchivo = `Cotizacion_BM_${numProforma || 'Pendiente'}.pdf`;
+        // 3. Convertimos el archivo en memoria a un archivo real que el teléfono pueda mandar
+        const nombreArchivo = `Cotizacion_BM_${numProforma}.pdf`;
         const archivoPDF = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
 
+        // 4. Verificamos si el teléfono soporta compartir archivos directamente
         if (navigator.canShare && navigator.canShare({ files: [archivoPDF] })) {
             navigator.share({
                 title: `Cotización BM Security N° ${numProforma}`,
                 text: `Saludos, adjunto los detalles de la cotización pro-forma N° ${numProforma} emitida el ${fecha}.`,
-                files: [archivoPDF]
+                files: [archivoPDF] // ¡Aquí va el PDF con los datos llenos!
             })
-            .then(() => console.log('Compartido con éxito'))
-            .catch((error) => console.log('Error al compartir', error));
+            .then(() => console.log('PDF compartido con éxito'))
+            .catch((error) => console.log('Error al compartir archivo', error));
         } else {
-            alert("Tu navegador no soporta adjuntar archivos directos. Usa el botón PDF para descargarlo y enviarlo por WhatsApp.");
+            // Alternativa si el navegador del cel es muy viejo y no soporta enviar archivos
+            const textoCopia = `BM Security - Cotización N° ${numProforma} (${fecha}). Por favor, descarga el PDF directamente con el botón rojo.`;
+            navigator.clipboard.writeText(textoCopia);
+            alert("Tu navegador no permite compartir archivos directamente. Se copió el texto informativo, y puedes usar el botón de 'PDF' para descargarlo y mandarlo.");
         }
     });
 }
