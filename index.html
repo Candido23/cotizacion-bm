@@ -609,7 +609,7 @@
             <tbody>
                 <tr class="item-row">
                     <td><input type="number" class="qty text-center" placeholder="0" oninput="calculateTotals()"></td>
-                    <td><input type="text" class="desc" placeholder="Ej. Bouncers de seguridad..."></td>
+                    <td><input type="text" class="desc" placeholder="Ej. BMS de seguridad..."></td>
                     <td><input type="number" class="price text-right" placeholder="0.00" step="0.01" oninput="calculateTotals()"></td>
                     <td class="total text-right" style="font-weight: 600; color: #0f172a;">L. 0.00</td>
                 </tr>
@@ -753,24 +753,49 @@
             });
         }
 
-        function compartirCotizacion() {
-            const numProforma = document.getElementById('proforma').value;
-            const fecha = document.getElementById('fecha').value;
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: `Cotización BM Security N° ${numProforma}`,
-                    text: `Saludos, adjunto los detalles de la cotización pro-forma N° ${numProforma} emitida el ${fecha}.`,
-                    url: window.location.href
-                })
-                .then(() => console.log('Compartido con éxito'))
-                .catch((error) => console.log('Error al compartir', error));
-            } else {
-                const textoCopia = `BM Security - Cotización N° ${numProforma} (${fecha})`;
-                navigator.clipboard.writeText(textoCopia);
-                alert("¡Información copiada! Ya puedes pegarla en tus chats.");
-            }
+       function compartirCotizacion() {
+    const numProforma = document.getElementById('proforma').value;
+    const fecha = document.getElementById('fecha').value;
+    const elemento = document.querySelector('.container');
+    
+    // 1. Forzamos la estructura compacta de impresión para el PDF
+    elemento.classList.add('fijar-pagina-pdf');
+
+    const opciones = {
+        margin:       [10, 8, 10, 8],
+        filename:     `Cotizacion_BM_Security_${numProforma || 'Nueva'}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' },
+        pagebreak:    { mode: 'avoid' }
+    };
+
+    // 2. Generamos el PDF como un "Blob" (archivo binario en memoria) en lugar de descargarlo directamente
+    html2pdf().set(opciones).from(elemento).outputPdf('blob').then((pdfBlob) => {
+        // Restauramos de inmediato el diseño responsivo en la pantalla del celular
+        elemento.classList.remove('fijar-pagina-pdf');
+
+        // 3. Convertimos el archivo en memoria a un archivo real que el teléfono pueda mandar
+        const nombreArchivo = `Cotizacion_BM_${numProforma}.pdf`;
+        const archivoPDF = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
+
+        // 4. Verificamos si el teléfono soporta compartir archivos directamente
+        if (navigator.canShare && navigator.canShare({ files: [archivoPDF] })) {
+            navigator.share({
+                title: `Cotización BM Security N° ${numProforma}`,
+                text: `Saludos, adjunto los detalles de la cotización pro-forma N° ${numProforma} emitida el ${fecha}.`,
+                files: [archivoPDF] // ¡Aquí va el PDF con los datos llenos!
+            })
+            .then(() => console.log('PDF compartido con éxito'))
+            .catch((error) => console.log('Error al compartir archivo', error));
+        } else {
+            // Alternativa si el navegador del cel es muy viejo y no soporta enviar archivos
+            const textoCopia = `BM Security - Cotización N° ${numProforma} (${fecha}). Por favor, descarga el PDF directamente con el botón rojo.`;
+            navigator.clipboard.writeText(textoCopia);
+            alert("Tu navegador no permite compartir archivos directamente. Se copió el texto informativo, y puedes usar el botón de 'PDF' para descargarlo y mandarlo.");
         }
+    });
+}
 
         window.addEventListener('DOMContentLoaded', () => {
             establecerFechaAutomatica();
