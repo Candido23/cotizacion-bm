@@ -753,14 +753,47 @@
             });
         }
 
-       function compartirCotizacion() {
+      function compartirCotizacion() {
     const numProforma = document.getElementById('proforma').value;
     const fecha = document.getElementById('fecha').value;
-    const elemento = document.querySelector('.container');
     
-    // 1. Forzamos la estructura compacta de impresión para el PDF
-    elemento.classList.add('fijar-pagina-pdf');
+    // 1. Tomamos el contenedor original
+    const contenedorOriginal = document.querySelector('.container');
+    
+    // 2. Creamos una copia exacta en memoria para no alterar lo que ve el usuario en pantalla
+    const clon = contenedorOriginal.cloneNode(true);
+    
+    // 3. PASO CRÍTICO: Convertimos todos los inputs del clon en texto plano para el PDF
+    // Esto asegura que los datos escritos se queden impresos y ordenados
+    const inputsOriginales = contenedorOriginal.querySelectorAll('input, textarea');
+    const inputsClonados = clon.querySelectorAll('input, textarea');
+    
+    inputsOriginales.forEach((input, index) => {
+        const valor = input.value || '';
+        const elementoDestino = inputsClonados[index];
+        
+        if (elementoDestino) {
+            // Creamos un elemento de texto limpio para reemplazar la caja de entrada
+            const textoLimpio = document.createElement('span');
+            textoLimpio.textContent = valor;
+            textoLimpio.style.display = 'inline-block';
+            textoLimpio.style.minHeight = '18px';
+            textoLimpio.style.color = '#0f172a';
+            textoLimpio.style.fontWeight = '600';
+            
+            // Reemplazamos el input cuadrado por el texto plano en el clon
+            elementoDestino.parentNode.replaceChild(textoLimpio, elementoDestino);
+        }
+    });
 
+    // 4. Forzamos al clon a usar la estructura de tabla fija e impresión
+    clon.classList.add('fijar-pagina-pdf');
+    clon.style.width = '800px'; // Ancho fijo interno para evitar el desorden del celular
+    clon.style.position = 'absolute';
+    clon.style.left = '-9999px'; // Lo escondemos para que no se vea feo en pantalla
+    document.body.appendChild(clon);
+
+    // 5. Configuración de la librería PDF apuntando al clon ordenado
     const opciones = {
         margin:       [10, 8, 10, 8],
         filename:     `Cotizacion_BM_Security_${numProforma || 'Nueva'}.pdf`,
@@ -770,30 +803,32 @@
         pagebreak:    { mode: 'avoid' }
     };
 
-    // 2. Generamos el PDF como un "Blob" (archivo binario en memoria) en lugar de descargarlo directamente
-    html2pdf().set(opciones).from(elemento).outputPdf('blob').then((pdfBlob) => {
-        // Restauramos de inmediato el diseño responsivo en la pantalla del celular
-        elemento.classList.remove('fijar-pagina-pdf');
+    // 6. Generamos el PDF desde nuestro clon perfecto
+    html2pdf().set(opciones).from(clon).outputPdf('blob').then((pdfBlob) => {
+        // Limpiamos la memoria borrando el clon oculto
+        document.body.removeChild(clon);
 
-        // 3. Convertimos el archivo en memoria a un archivo real que el teléfono pueda mandar
-        const nombreArchivo = `Cotizacion_BM_${numProforma}.pdf`;
+        // 7. Creamos el archivo físico virtual
+        const nombreArchivo = `Cotizacion_BM_${numProforma || 'Pendiente'}.pdf`;
         const archivoPDF = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
 
-        // 4. Verificamos si el teléfono soporta compartir archivos directamente
+        // 8. Enviamos el PDF con los datos congelados por el menú nativo del cel
         if (navigator.canShare && navigator.canShare({ files: [archivoPDF] })) {
             navigator.share({
                 title: `Cotización BM Security N° ${numProforma}`,
                 text: `Saludos, adjunto los detalles de la cotización pro-forma N° ${numProforma} emitida el ${fecha}.`,
-                files: [archivoPDF] // ¡Aquí va el PDF con los datos llenos!
+                files: [archivoPDF]
             })
-            .then(() => console.log('PDF compartido con éxito'))
-            .catch((error) => console.log('Error al compartir archivo', error));
+            .then(() => console.log('Compartido con éxito'))
+            .catch((error) => console.log('Error al compartir', error));
         } else {
-            // Alternativa si el navegador del cel es muy viejo y no soporta enviar archivos
-            const textoCopia = `BM Security - Cotización N° ${numProforma} (${fecha}). Por favor, descarga el PDF directamente con el botón rojo.`;
+            const textoCopia = `BM Security - Cotización N° ${numProforma} (${fecha})`;
             navigator.clipboard.writeText(textoCopia);
-            alert("Tu navegador no permite compartir archivos directamente. Se copió el texto informativo, y puedes usar el botón de 'PDF' para descargarlo y mandarlo.");
+            alert("Tu navegador no soporta compartir archivos directamente. Se copió el texto. Usa el botón 'PDF' para descargarlo manualmente.");
         }
+    }).catch((err) => {
+        console.error(err);
+        if (document.body.contains(clon)) document.body.removeChild(clon);
     });
 }
 
